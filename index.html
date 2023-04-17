@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Logger</title>
+    <style>
+      .note {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+
+      .timestamp {
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+
+      .content {
+        margin-bottom: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      function logMessage() {
+        let noteInput = document.getElementById("note");
+        let note = noteInput.value;
+        let now = new Date();
+        let offset = now.getTimezoneOffset();
+        let hours = Math.floor(Math.abs(offset) / 60);
+        let minutes = Math.abs(offset) % 60;
+        let timezone = `GMT${offset < 0 ? '+' : '-'}${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+        let month = now.getMonth() + 1;
+        let date = now.getDate();
+        let year = now.getFullYear();
+
+        let ampm = now.getHours() >= 12 ? 'pm' : 'am';
+        let hours12 = now.getHours() % 12;
+        hours12 = hours12 ? hours12 : 12;
+        let minutesStr = now.getMinutes().toString().padStart(2, '0');
+        let secondsStr = now.getSeconds().toString().padStart(2, '0');
+        let millisecondsStr = now.getMilliseconds().toString().padStart(3, '0');
+
+        let dateStr = `${date.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+        let timeStr = `${hours12.toString().padStart(2, '0')}:${minutesStr}:${secondsStr}:${millisecondsStr} ${ampm}`;
+        let timestampStr = `[${dateStr}, ${timeStr} ${timezone}]`;
+
+        let logDiv = document.getElementById("log");
+        let noteHtml = `
+          <div class="note">
+            <div class="timestamp">${timestampStr}</div>
+            <div class="content">${note}</div>
+          </div>
+        `;
+        logDiv.innerHTML = noteHtml + logDiv.innerHTML;
+        noteInput.value = ''; // clear the input field
+
+        // send the note and timestamp to PHP script via AJAX
+        let xhr = new XMLHttpRequest();
+        xhr.open("POST", "LogWriter.php", true);
+        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        xhr.send(`note=${encodeURIComponent(note)}&timestamp=${encodeURIComponent(timestampStr)}`);
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        // fetch the contents of Logger.txt via AJAX
+        let xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4 && xhr.status === 200) {
+            let logDiv = document.getElementById("log");
+            logDiv.innerHTML = xhr.responseText + logDiv.innerHTML;
+          }
+        };
+        xhr.open("GET", "LogReader.php", true);
+        xhr.send();
+
+        let noteInput = document.getElementById("note");
+        noteInput.addEventListener("keydown", function (event) {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            logMessage();
+          }
+        });
+      });
+    </script>
+    <input type="text" id="note" placeholder="Enter your note">
+    <button onclick="logMessage()">Log Message</button><br><br>
+    <div id="log"></div>
+
+  </body>
+</html>
